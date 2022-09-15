@@ -22,45 +22,91 @@ class Item:
 # PRIVATE *********************************************************************
 
 def process(videosdirpath):
-    print(f"process()...")
+    print("Start")
     items = []
+    logconfig(videosdirpath)
 
     print("Step 1 : Find")
     items = getfiles(videosdirpath)
     items = filterbyext(items, DEFAULT_EXTS)
-    items = filterbycodec(items, DEFAULT_CODECS)  
+    items = filterbycodec(items, DEFAULT_CODECS)
 
     print("Step 2 : Prepare")
     for item in items:
-        item = setthumb(item, THUMB_SUFFIX)
+        logsource(item)
+        setthumb(item, THUMB_SUFFIX)
         if exists(item.thumb) :
             break
-        item = savethumb(item)
+        savethumb(item)
 
     print("Step 3 : Encode")
     for item in items:
-        item = setoutput(item, DEFAULT_SUFFIX)
+        setoutput(item, DEFAULT_SUFFIX)
         # item = namedateprefix(items)
+        logtarget(item)
         if exists(item.output) :
             break
-        item = reencode(item)
+        logvideo(item)
+        reencode(item)
 
     print("Step 4 : archive")
     # items = createarchivedir()
     # items = archive(items)
 
-    print('Finish : Batch Result')
-    printcsv(items)
+    print('End')
+    logcsv(items)
 
 # FUNCTIONS *********************************************************************
 
-def printcsv(items):
-    print(f"index;input;output;archive")
+def logconfig(path):
+    print("")
+    print("---------------------------- Configuration ----------------------------")
+    print("")
+    print(f"Input")
+    print(f"folder: {path}")
+    print(f"filter (exts): {DEFAULT_EXTS}")
+    print(f"filter (codecs): {DEFAULT_CODECS}")
+    print("")
+    print(f"Output")
+    print(f"name: *{DEFAULT_SUFFIX}")
+    print("")
+
+def logsource(item):
+    print("")
+    print("------------------------- Source Script Info -------------------------")
+    print("")
+    print(f"index: {item.index}")
+    print(f"input: {item.input}")
+    print("")
+
+def logtarget(item):
+    print("")
+    print("------------------------- Target Script Info -------------------------")
+    print("")
+    print(f"output: {item.output}")
+    print(f"thumb: {item.thumb}")
+    print("")
+
+def logvideo(item):
+    print("")
+    print("------------------------- Video encoding x265 -------------------------")
+    print("")
+    
+def logvideo(item):
+    print("")
+    print("---------------------------- Muxing to MP4 ----------------------------")
+    print("")
+
+def logcsv(items):
+    print("")
+    print("-------------------------- Printing to CSV ----------------------------")
+    print("")
+    print(f"index;input;output;archive;")
     for item in items:
-        print(f"{item.index};{item.input};{item.output};{item.archive}")
+        print(f"{item.index};{item.input};{item.output};{item.archive};")
+    print("")
 
 def getfiles(path):
-    print(f"listfiles() path={path}...")
     items = []
     files = glob.glob(f"{path}/*.*")
     index = 0
@@ -73,7 +119,6 @@ def getfiles(path):
     return items
 
 def filterbyext(items, exts):
-    print(f"filterbyext() exts={exts}...")
     filtered = []
     for item in items:
         ext = pathlib.Path(item.input).suffix
@@ -81,12 +126,10 @@ def filterbyext(items, exts):
         ext = ext.lower()
         if ext in exts:
             filtered.append(item)
-            print(f"{item.index}: {item.input}")
     return filtered
 
 # https://github.com/gbstack/ffprobe-python
 def filterbycodec(items, codecs):
-    print(f"filterbycodec() exts={codecs}...")
     filtered = []
     for item in items:
         metadata = FFProbe(item.input)
@@ -94,7 +137,6 @@ def filterbycodec(items, codecs):
             if is_video(stream):
                 if codec(stream).lower() in codecs:
                     filtered.append(item)
-                    print(f"{item.index}: {item.input}")
     return filtered
 
 # https://github.com/gbstack/ffprobe-python
@@ -116,11 +158,8 @@ def codec(json):
     return json['codec_name']
 
 def setoutput(item, suffix):
-    print(f"setdestination()...")
     item.output = item.input
     item.output = replacesuffix(item.output, suffix)
-    print(f"{item.index}: {item.output}")
-    return item
 
 def replacesuffix(path, suffix):
     ext = pathlib.Path(path).suffix
@@ -129,25 +168,19 @@ def replacesuffix(path, suffix):
 
 def setthumb(item, suffix):
     item.thumb = replacesuffix(item.input, suffix)
-    return item
 
 def savethumb(item):
     input = item.input
     output = item.thumb
     ts = THUMB_TS
     cmd = f"ffmpeg.exe -ss {ts} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
-    print(cmd)
     out = subprocess.check_output(cmd, shell=True)
-    print(out)
 
 def reencode(item):
-    print(f"reencode()...")
     input = item.input
     output = item.output
     cmd = f"ffmpeg.exe -i \"{input}\" -c:v libx265 \"{output}\""
-    print(cmd)
     out = subprocess.check_output(cmd, shell=True)
-    return item
 
 # https://www.tutorialspoint.com/python/python_command_line_arguments.htm
 def getargs(argv, configs, helpmsg=None):
