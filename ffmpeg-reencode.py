@@ -6,41 +6,60 @@ from os.path import exists
 
 DEFAULT_EXTS = ['mp4']
 DEFAULT_CODECS = ['h264']
+DEFAULT_SUFFIX = '-x265.mp4'
+THUMB_SUFFIX = '-thumb.jpg'
+THUMB_TS = "00:00:01"
 
 # PUBLIC **********************************************************************
 
 class Item:
     index = 0
-    path = ""
-    dest = ""
+    input = ""
+    output = ""
     thumb = ""
+    archive = ""
     
 # PRIVATE *********************************************************************
 
 def process(videosdirpath):
     print(f"process()...")
     items = []
-    print("STEP 1 : FIND")
-    items = listfiles(videosdirpath)
+
+    print("Step 1 : Find")
+    items = getfiles(videosdirpath)
     items = filterbyext(items, DEFAULT_EXTS)
-    items = filterbycodec(items, DEFAULT_CODECS)   
-    print("STEP 2 : PREPARE")
-    # items = createthumbs(items)
-    # items = namedateprefix(items)
-    print("STEP 3 : ENCODE")
+    items = filterbycodec(items, DEFAULT_CODECS)  
+
+    print("Step 2 : Prepare")
     for item in items:
-        print(f"{item.index}: {item.path}")
-        item = setdestination(item)
-        item = replacesuffix(item, '-x265.mp4')
-        if exists(item.dest) :
+        item = setthumb(item, THUMB_SUFFIX)
+        if exists(item.thumb) :
+            break
+        item = savethumb(item)
+
+    print("Step 3 : Encode")
+    for item in items:
+        item = setoutput(item, DEFAULT_SUFFIX)
+        # item = namedateprefix(items)
+        if exists(item.output) :
             break
         item = reencode(item)
-    print("STEP 4 : ARCHIVE")
+
+    print("Step 4 : archive")
     # items = createarchivedir()
     # items = archive(items)
-    print('Batch Result:')
 
-def listfiles(path):
+    print('Finish : Batch Result')
+    printcsv(items)
+
+# FUNCTIONS *********************************************************************
+
+def printcsv(items):
+    print(f"index;input;output;archive")
+    for item in items:
+        print(f"{item.index};{item.input};{item.output};{item.archive}")
+
+def getfiles(path):
     print(f"listfiles() path={path}...")
     items = []
     files = glob.glob(f"{path}/*.*")
@@ -48,7 +67,7 @@ def listfiles(path):
     for file in files:
         item = Item()
         item.index = index
-        item.path = file
+        item.input = file
         items.append(item)
         index = index + 1
     return items
@@ -57,24 +76,25 @@ def filterbyext(items, exts):
     print(f"filterbyext() exts={exts}...")
     filtered = []
     for item in items:
-        ext = pathlib.Path(item.path).suffix
+        ext = pathlib.Path(item.input).suffix
         ext = ext.replace('.','')
         ext = ext.lower()
         if ext in exts:
             filtered.append(item)
-            print(f"{item.index}: {item.path}")
+            print(f"{item.index}: {item.input}")
     return filtered
 
+# https://github.com/gbstack/ffprobe-python
 def filterbycodec(items, codecs):
     print(f"filterbycodec() exts={codecs}...")
     filtered = []
     for item in items:
-        metadata = FFProbe(item.path)
+        metadata = FFProbe(item.input)
         for stream in metadata["streams"]:
             if is_video(stream):
                 if codec(stream).lower() in codecs:
                     filtered.append(item)
-                    print(f"{item.index}: {item.path}")
+                    print(f"{item.index}: {item.input}")
     return filtered
 
 # https://github.com/gbstack/ffprobe-python
@@ -95,25 +115,35 @@ def is_video(json):
 def codec(json):
     return json['codec_name']
 
-def setdestination(item):
+def setoutput(item, suffix):
     print(f"setdestination()...")
-    item.dest = item.path
-    print(f"{item.index}: {item.dest}")
+    item.output = item.input
+    item.output = replacesuffix(item.output, suffix)
+    print(f"{item.index}: {item.output}")
     return item
 
-def replacesuffix(item, suffix):
-    print(f"replacesuffix() suffix={suffix}...")
-    path = item.dest
+def replacesuffix(path, suffix):
     ext = pathlib.Path(path).suffix
     new = path.replace(ext, f"{suffix}")
-    item.dest = new
-    print(f"{item.index}: {item.dest}")
+    return new
+
+def setthumb(item, suffix):
+    item.thumb = replacesuffix(item.input, suffix)
     return item
+
+def savethumb(item):
+    input = item.input
+    output = item.thumb
+    ts = THUMB_TS
+    cmd = f"ffmpeg.exe -ss {ts} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
+    print(cmd)
+    out = subprocess.check_output(cmd, shell=True)
+    print(out)
 
 def reencode(item):
     print(f"reencode()...")
-    input = item.path
-    output = item.dest
+    input = item.input
+    output = item.output
     cmd = f"ffmpeg.exe -i \"{input}\" -c:v libx265 \"{output}\""
     print(cmd)
     out = subprocess.check_output(cmd, shell=True)
