@@ -4,9 +4,9 @@ from os.path import exists
 
 # STATIC **********************************************************************
 
-DEFAULT_EXTS = ['mp4']
-DEFAULT_CODECS = ['h264']
-DEFAULT_SUFFIX = '-x265.mp4'
+FILTER_EXTS = ['mp4']
+FILTER_CODECS = ['h264']
+OUTPUT_SUFFIX = '-x265.mp4'
 THUMB_SUFFIX = '-thumb.jpg'
 THUMB_TS = "00:00:01"
 
@@ -17,7 +17,6 @@ class Item:
     input = ""
     output = ""
     thumb = ""
-    archive = ""
     
 # PRIVATE *********************************************************************
 
@@ -28,8 +27,8 @@ def process(videosdirpath):
 
     print("Step 1 : Find")
     items = getfiles(videosdirpath)
-    items = filterbyext(items, DEFAULT_EXTS)
-    items = filterbycodec(items, DEFAULT_CODECS)
+    items = filterbyext(items, FILTER_EXTS)
+    items = filterbycodec(items, FILTER_CODECS)
 
     print("Step 2 : Prepare")
     for item in items:
@@ -41,22 +40,94 @@ def process(videosdirpath):
 
     print("Step 3 : Encode")
     for item in items:
-        setoutput(item, DEFAULT_SUFFIX)
-        # item = namedateprefix(items)
+        setoutput(item, OUTPUT_SUFFIX)
         logtarget(item)
         if exists(item.output) :
             break
         logvideo(item)
         reencode(item)
 
-    print("Step 4 : archive")
-    # items = createarchivedir()
-    # items = archive(items)
-
     print('End')
     logcsv(items)
 
 # FUNCTIONS *********************************************************************
+
+def getfiles(path):
+    items = []
+    files = glob.glob(f"{path}/*.*")
+    index = 0
+    for file in files:
+        item = Item()
+        item.index = index
+        item.input = file
+        items.append(item)
+        index = index + 1
+    return items
+
+def filterbyext(items, exts):
+    filtered = []
+    for item in items:
+        ext = pathlib.Path(item.input).suffix
+        ext = ext.replace('.','')
+        ext = ext.lower()
+        if not ext in exts:
+            break
+        filtered.append(item)
+    return filtered
+
+# https://github.com/gbstack/ffprobe-python
+def filterbycodec(items, codecs):
+    filtered = []
+    for item in items:
+        metadata = FFProbe(item.input)
+        for stream in metadata["streams"]:
+            if not is_video(stream):
+                break
+            if not codec(stream).lower() in codecs:
+                break    
+            filtered.append(item)
+    return filtered
+
+# https://github.com/gbstack/ffprobe-python
+def FFProbe(path):
+    cmd = f"ffprobe.exe -show_format -show_streams -loglevel quiet -print_format json {path}"
+    json_data = subprocess.check_output(cmd, shell=True)
+    json_object = json.loads(json_data)
+    return json_object
+
+# https://github.com/gbstack/ffprobe-python
+def is_video(json):
+    return json['codec_type'] == 'video'
+# https://github.com/gbstack/ffprobe-python
+def codec(json):
+    return json['codec_name']
+
+def setoutput(item, suffix):
+    item.output = item.input
+    item.output = replacesuffix(item.output, suffix)
+
+def replacesuffix(path, suffix):
+    ext = pathlib.Path(path).suffix
+    new = path.replace(ext, f"{suffix}")
+    return new
+
+def setthumb(item, suffix):
+    item.thumb = replacesuffix(item.input, suffix)
+
+def savethumb(item):
+    input = item.input
+    output = item.thumb
+    ts = THUMB_TS
+    cmd = f"ffmpeg.exe -ss {ts} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
+    out = subprocess.check_output(cmd, shell=True)
+
+def reencode(item):
+    input = item.input
+    output = item.output
+    cmd = f"ffmpeg.exe -i \"{input}\" -c:v libx265 \"{output}\""
+    out = subprocess.check_output(cmd, shell=True)
+
+# LOGS *********************************************************************
 
 def logconfig(path):
     print("")
@@ -64,11 +135,11 @@ def logconfig(path):
     print("")
     print(f"Input")
     print(f"folder: {path}")
-    print(f"filter (exts): {DEFAULT_EXTS}")
-    print(f"filter (codecs): {DEFAULT_CODECS}")
+    print(f"filter (exts): {FILTER_EXTS}")
+    print(f"filter (codecs): {FILTER_CODECS}")
     print("")
     print(f"Output")
-    print(f"name: *{DEFAULT_SUFFIX}")
+    print(f"name: *{OUTPUT_SUFFIX}")
     print("")
 
 def logsource(item):
@@ -106,81 +177,7 @@ def logcsv(items):
         print(f"{item.index};{item.input};{item.output};{item.archive};")
     print("")
 
-def getfiles(path):
-    items = []
-    files = glob.glob(f"{path}/*.*")
-    index = 0
-    for file in files:
-        item = Item()
-        item.index = index
-        item.input = file
-        items.append(item)
-        index = index + 1
-    return items
-
-def filterbyext(items, exts):
-    filtered = []
-    for item in items:
-        ext = pathlib.Path(item.input).suffix
-        ext = ext.replace('.','')
-        ext = ext.lower()
-        if ext in exts:
-            filtered.append(item)
-    return filtered
-
-# https://github.com/gbstack/ffprobe-python
-def filterbycodec(items, codecs):
-    filtered = []
-    for item in items:
-        metadata = FFProbe(item.input)
-        for stream in metadata["streams"]:
-            if is_video(stream):
-                if codec(stream).lower() in codecs:
-                    filtered.append(item)
-    return filtered
-
-# https://github.com/gbstack/ffprobe-python
-def FFProbe(path):
-    cmd = f"ffprobe.exe -show_format -show_streams -loglevel quiet -print_format json {path}"
-    # print(cmd)
-    json_data = subprocess.check_output(cmd, shell=True)
-    json_object = json.loads(json_data)
-    # json_formatted_str = json.dumps(json_object, indent=2)
-    # print(json_formatted_str)
-    metadata = json_object
-    return metadata
-
-# https://github.com/gbstack/ffprobe-python
-def is_video(json):
-    return json['codec_type'] == 'video'
-# https://github.com/gbstack/ffprobe-python
-def codec(json):
-    return json['codec_name']
-
-def setoutput(item, suffix):
-    item.output = item.input
-    item.output = replacesuffix(item.output, suffix)
-
-def replacesuffix(path, suffix):
-    ext = pathlib.Path(path).suffix
-    new = path.replace(ext, f"{suffix}")
-    return new
-
-def setthumb(item, suffix):
-    item.thumb = replacesuffix(item.input, suffix)
-
-def savethumb(item):
-    input = item.input
-    output = item.thumb
-    ts = THUMB_TS
-    cmd = f"ffmpeg.exe -ss {ts} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
-    out = subprocess.check_output(cmd, shell=True)
-
-def reencode(item):
-    input = item.input
-    output = item.output
-    cmd = f"ffmpeg.exe -i \"{input}\" -c:v libx265 \"{output}\""
-    out = subprocess.check_output(cmd, shell=True)
+# UTILS *********************************************************************
 
 # https://www.tutorialspoint.com/python/python_command_line_arguments.htm
 def getargs(argv, configs, helpmsg=None):
