@@ -4,6 +4,10 @@
 Reencode videos folder's content to x265, with thumbnails
 (tested with ffmpeg "Latest Auto-Build (2022-09-13 12:39)")
 
+Example : 
+- Input `DJI_0721.MP4`
+- Output `20221017_170300-DJI_0721-x265.mp4` (with thumbnail)
+
 ---
 
 ## Getting Started

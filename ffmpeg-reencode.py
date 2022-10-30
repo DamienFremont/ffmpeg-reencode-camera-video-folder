@@ -34,16 +34,16 @@ def process(videosdirpath):
     for item in items:
         logsource(item)
         setthumb(item, THUMB_SUFFIX)
-        if exists(item.thumb) :
-            break
+        # if exists(item.thumb) :
+        #     break
         savethumb(item)
 
     print("Step 3 : Encode")
     for item in items:
         setoutput(item, OUTPUT_SUFFIX)
         logtarget(item)
-        if exists(item.output) :
-            break
+        # if exists(item.output) :
+        #     break
         logvideo(item)
         reencode(item)
 
@@ -174,7 +174,7 @@ def logcsv(items):
     print("")
     print(f"index;input;output;archive;")
     for item in items:
-        print(f"{item.index};{item.input};{item.output};{item.archive};")
+        print(f"{item.index};{item.input};{item.output};")
     print("")
 
 # UTILS *********************************************************************
