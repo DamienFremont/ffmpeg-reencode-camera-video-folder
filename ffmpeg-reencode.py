@@ -34,8 +34,8 @@ def process(videosdirpath):
     for item in items:
         logsource(item)
         setthumb(item, THUMB_SUFFIX)
-        # if exists(item.thumb) :
-        #     break
+        if exists(item.thumb) :
+            continue
         savethumb(item)
 
     print("Step 3 : Encode")
@@ -43,7 +43,7 @@ def process(videosdirpath):
         setoutput(item, OUTPUT_SUFFIX)
         logtarget(item)
         # if exists(item.output) :
-        #     break
+        #     continue
         logvideo(item)
         reencode(item)
 
@@ -71,7 +71,7 @@ def filterbyext(items, exts):
         ext = ext.replace('.','')
         ext = ext.lower()
         if not ext in exts:
-            break
+            continue
         filtered.append(item)
     return filtered
 
@@ -82,9 +82,9 @@ def filterbycodec(items, codecs):
         metadata = FFProbe(item.input)
         for stream in metadata["streams"]:
             if not is_video(stream):
-                break
+                continue
             if not codec(stream).lower() in codecs:
-                break    
+                continue    
             filtered.append(item)
     return filtered
 
@@ -124,7 +124,9 @@ def savethumb(item):
 def reencode(item):
     input = item.input
     output = item.output
-    cmd = f"ffmpeg.exe -i \"{input}\" -c:v libx265 \"{output}\""
+    overwrite = '-y'
+    verbose = '-hide_banner -loglevel error'
+    cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{input}\" -c:v libx265 \"{output}\""
     out = subprocess.check_output(cmd, shell=True)
 
 # LOGS *********************************************************************
