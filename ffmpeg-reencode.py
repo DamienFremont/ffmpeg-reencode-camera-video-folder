@@ -22,6 +22,8 @@ class Item:
     input = ""
     output = ""
     thumb = ""
+    video = ""
+    audio = ""
     
 # PRIVATE *********************************************************************
 
@@ -49,9 +51,10 @@ def process(videosdirpath):
         # if exists(item.output) :
         #     continue
         # TODO: temp folder
+        createtemp(item)
         savevideo(item)
         saveaudio(item)
-        savethumb(item)
+        savethumb(item, THUMB_TS)
 
     print("Step 4 : Mux")
     for item in items:
@@ -146,40 +149,44 @@ def replacesuffix(path, suffix):
     new = path.replace(ext, f"{suffix}")
     return new
 
-def savethumb(item):
+def createtemp(item):
+    folderpath = f"{item.output}_temp"
+    item.temp = folderpath
+    if exists(folderpath) :
+        return
+    os.mkdir(folderpath)
+    print(f"Directory {folderpath} created")
+
+def savethumb(item, ts):
     input = item.input
-    thumb = f"{item.output}.jpg"
-    ts = THUMB_TS
+    filepath = os.path.join(item.temp, "thumb.jpg")
     overwrite = '-y'
     verbose = '-hide_banner -loglevel error'
-    cmd = f"ffmpeg.exe -ss {ts} {overwrite} {verbose} -i \"{input}\" -frames:v 1 -q:v 2 \"{thumb}\""
+    cmd = f"ffmpeg.exe -ss {ts} {overwrite} {verbose} -i \"{input}\" -frames:v 1 -q:v 2 \"{filepath}\""
     out = subprocess.check_output(cmd, shell=True)
-    item.thumb = thumb
+    item.thumb = filepath
 
 def savevideo(item):
     metadata = FFProbe(item.input)
     for stream in metadata["streams"]:
         if is_video(stream):
-            # VIDEO
-            video = f"{item.output}.h265"
+            filepath = os.path.join(item.temp, "video.h265")
             overwrite = '-y'
             verbose = '-hide_banner -loglevel error'
-            cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{item.input}\" -c:v libx265 \"{video}\""
+            cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{item.input}\" -c:v libx265 \"{filepath}\""
             out = subprocess.check_output(cmd, shell=True)
-            item.video = video
+            item.video = filepath
 
 def saveaudio(item):
     metadata = FFProbe(item.input)
     for stream in metadata["streams"]:
         if is_audio(stream):
-            # AUDIO
-            audio = f"{item.output}.m4a"
-            cmd = f"MP4Box.exe -single 2 -out \"{audio}\" \"{item.input}\""
+            filepath = os.path.join(item.temp, "audio.m4a")
+            cmd = f"MP4Box.exe -single 2 -out \"{filepath}\" \"{item.input}\""
             out = subprocess.check_output(cmd, shell=True)
-            item.audio = audio
+            item.audio = filepath
 
 def reencode(item):
-    # MUXER
     cmdvideo = f" -add \"{item.video}#video:name=\" " if hasattr(item, 'video') else ""
     cmdaudio = f" -add \"{item.audio}#audio:name=\" " if hasattr(item, 'audio') else ""
     cmdthumb = f" -itags cover=\"{item.thumb}\" " if hasattr(item, 'thumb') else ""
@@ -322,6 +329,7 @@ def main(argv):
     dirpath = argd.get("dirpath")
     print("FFMEPG Re-encode")
     print(f'Exec. path : {os.getcwd()}')
+    # TODO: install()
     process(dirpath)
 
 if __name__ == "__main__":
