@@ -163,8 +163,18 @@ def reencode(item):
     output = item.output
     overwrite = '-y'
     verbose = '-hide_banner -loglevel error'
+    
+    # VIDEO
     cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{input}\" -c:v libx265 \"{output}\""
     out = subprocess.check_output(cmd, shell=True)
+    # AUDIO
+    audio = f"{output}.m4a"
+    cmd = f"MP4Box.exe -single 2 -out \"{audio}\" \"{input}\""
+    out = subprocess.check_output(cmd, shell=True)
+    # MUXER
+    cmd = f"MP4Box.exe -add \"{item.output}#video:name=\" -add \"{audio}#audio:name=\" -itags cover=\"{item.thumb}\" -new \"{item.output}.mp4\""
+    out = subprocess.check_output(cmd, shell=True)
+
 
 # LOGS *********************************************************************
 
