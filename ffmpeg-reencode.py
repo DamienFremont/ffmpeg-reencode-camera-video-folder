@@ -9,7 +9,7 @@ import re
 FILTER_EXTS = ['mp4']
 FILTER_CODECS = ['h264']
 OUTPUT_SUFFIX = '-x265.mp4'
-THUMB_SUFFIX = '-thumb.jpg'
+THUMB_SUFFIX = '.jpg'
 THUMB_TS = "00:00:01"
 OUTPUT_DATE_REG = r'^[0-9]{8}_[0-9]{6}.*'
 OUTPUT_DATE_PREFIX = "%Y%m%d_%H%M%S-"
@@ -42,16 +42,18 @@ def process(videosdirpath):
         setoutputcodec(item, OUTPUT_SUFFIX)
         if not hasdatename(item, OUTPUT_DATE_REG): 
             setoutputctime(item, OUTPUT_DATE_PREFIX, METADATA_DATE_PTRN)
-        setthumb(item, THUMB_SUFFIX)
-
-    print("Step 2 : Thumbs")
-    for item in items:
-        logtarget(item)
-        # if exists(item.thumb) :
-        #     continue
-        savethumb(item)
 
     print("Step 3 : Encode")
+    for item in items:
+        logtarget(item)
+        # if exists(item.output) :
+        #     continue
+        # TODO: temp folder
+        savevideo(item)
+        saveaudio(item)
+        savethumb(item)
+
+    print("Step 4 : Mux")
     for item in items:
         # if exists(item.output) :
         #     continue
@@ -113,6 +115,8 @@ def FFProbe(path):
 # https://github.com/gbstack/ffprobe-python
 def is_video(json):
     return json['codec_type'] == 'video'
+def is_audio(json):
+    return json['codec_type'] == 'audio'
 # https://github.com/gbstack/ffprobe-python
 def codec(json):
     return json['codec_name']
@@ -122,20 +126,16 @@ def setoutputcodec(item, suffix):
 
 # TODO: add timezone param to CLI
 def setoutputctime(item, tpl, tpl2):
-    filepath = item.input
-    
     metadata = FFProbe(item.input)
     for stream in metadata["streams"]:
         if is_video(stream):
             datestr = stream['tags']['creation_time']
-            
     utc_dt = datetime.strptime(datestr, tpl2)
     loc_dt = utc_to_local(utc_dt) 
     ctime = utc_dt.astimezone().strftime(tpl)
-
+    filepath = item.output
     dirname = os.path.dirname(filepath)
     basename = os.path.basename(filepath)
-
     item.output = f"{dirname}\{ctime}{basename}"
 
 def utc_to_local(utc_dt):
@@ -146,35 +146,47 @@ def replacesuffix(path, suffix):
     new = path.replace(ext, f"{suffix}")
     return new
 
-def setthumb(item, suffix):
-    item.thumb = replacesuffix(item.output, suffix)
-
 def savethumb(item):
     input = item.input
-    output = item.thumb
+    thumb = f"{item.output}.jpg"
     ts = THUMB_TS
     overwrite = '-y'
     verbose = '-hide_banner -loglevel error'
-    cmd = f"ffmpeg.exe -ss {ts} {overwrite} {verbose} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
+    cmd = f"ffmpeg.exe -ss {ts} {overwrite} {verbose} -i \"{input}\" -frames:v 1 -q:v 2 \"{thumb}\""
     out = subprocess.check_output(cmd, shell=True)
+    item.thumb = thumb
+
+def savevideo(item):
+    metadata = FFProbe(item.input)
+    for stream in metadata["streams"]:
+        if is_video(stream):
+            # VIDEO
+            video = f"{item.output}.h265"
+            overwrite = '-y'
+            verbose = '-hide_banner -loglevel error'
+            cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{item.input}\" -c:v libx265 \"{video}\""
+            out = subprocess.check_output(cmd, shell=True)
+            item.video = video
+
+def saveaudio(item):
+    metadata = FFProbe(item.input)
+    for stream in metadata["streams"]:
+        if is_audio(stream):
+            # AUDIO
+            audio = f"{item.output}.m4a"
+            cmd = f"MP4Box.exe -single 2 -out \"{audio}\" \"{item.input}\""
+            out = subprocess.check_output(cmd, shell=True)
+            item.audio = audio
 
 def reencode(item):
-    input = item.input
-    output = item.output
+    # MUXER
+    cmdvideo = f" -add \"{item.video}#video:name=\" " if hasattr(item, 'video') else ""
+    cmdaudio = f" -add \"{item.audio}#audio:name=\" " if hasattr(item, 'audio') else ""
+    cmdthumb = f" -itags cover=\"{item.thumb}\" " if hasattr(item, 'thumb') else ""
     overwrite = '-y'
     verbose = '-hide_banner -loglevel error'
-    
-    # VIDEO
-    cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{input}\" -c:v libx265 \"{output}\""
+    cmd = f"MP4Box.exe {cmdvideo} {cmdaudio} {cmdthumb} -new \"{item.output}\""
     out = subprocess.check_output(cmd, shell=True)
-    # AUDIO
-    audio = f"{output}.m4a"
-    cmd = f"MP4Box.exe -single 2 -out \"{audio}\" \"{input}\""
-    out = subprocess.check_output(cmd, shell=True)
-    # MUXER
-    cmd = f"MP4Box.exe -add \"{item.output}#video:name=\" -add \"{audio}#audio:name=\" -itags cover=\"{item.thumb}\" -new \"{item.output}.mp4\""
-    out = subprocess.check_output(cmd, shell=True)
-
 
 # LOGS *********************************************************************
 
@@ -204,7 +216,6 @@ def logtarget(item):
     print("------------------------- Target Script Info -------------------------")
     print("")
     print(f"output: {item.output}")
-    print(f"thumb: {item.thumb}")
     print("")
 
 def logvideo(item):
