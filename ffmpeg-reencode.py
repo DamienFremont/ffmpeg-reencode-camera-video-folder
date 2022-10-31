@@ -2,6 +2,7 @@ import sys, os, glob, getopt, subprocess, pathlib, json
 from datetime import datetime, timezone
 from subprocess import call
 from os.path import exists
+import re
 
 # STATIC **********************************************************************
 
@@ -10,6 +11,7 @@ FILTER_CODECS = ['h264']
 OUTPUT_SUFFIX = '-x265.mp4'
 THUMB_SUFFIX = '-thumb.jpg'
 THUMB_TS = "00:00:01"
+OUTPUT_DATE_REG = r'^[0-9]{8}_[0-9]{6}.*'
 OUTPUT_DATE_PREFIX = "%Y%m%d_%H%M%S-"
 METADATA_DATE_PTRN = "%Y-%m-%dT%H:%M:%S.%f%z"
 
@@ -38,7 +40,8 @@ def process(videosdirpath):
         logsource(item)
         item.output = item.input
         setoutputcodec(item, OUTPUT_SUFFIX)
-        setoutputctime(item, OUTPUT_DATE_PREFIX, METADATA_DATE_PTRN)
+        if not hasdatename(item, OUTPUT_DATE_REG): 
+            setoutputctime(item, OUTPUT_DATE_PREFIX, METADATA_DATE_PTRN)
         setthumb(item, THUMB_SUFFIX)
 
     print("Step 2 : Thumbs")
@@ -59,6 +62,10 @@ def process(videosdirpath):
     logcsv(items)
 
 # FUNCTIONS *********************************************************************
+
+def hasdatename(item, pattern):
+    basename = os.path.basename(item.input)
+    return re.match(pattern, basename)
 
 def getfiles(path):
     items = []
@@ -146,7 +153,9 @@ def savethumb(item):
     input = item.input
     output = item.thumb
     ts = THUMB_TS
-    cmd = f"ffmpeg.exe -ss {ts} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
+    overwrite = '-y'
+    verbose = '-hide_banner -loglevel error'
+    cmd = f"ffmpeg.exe -ss {ts} {overwrite} {verbose} -i \"{input}\" -frames:v 1 -q:v 2 \"{output}\""
     out = subprocess.check_output(cmd, shell=True)
 
 def reencode(item):
