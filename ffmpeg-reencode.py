@@ -1,4 +1,5 @@
 import sys, os, glob, getopt, subprocess, pathlib, json
+from datetime import datetime, timezone
 from subprocess import call
 from os.path import exists
 
@@ -9,6 +10,8 @@ FILTER_CODECS = ['h264']
 OUTPUT_SUFFIX = '-x265.mp4'
 THUMB_SUFFIX = '-thumb.jpg'
 THUMB_TS = "00:00:01"
+OUTPUT_DATE_PREFIX = "%Y%m%d_%H%M%S-"
+METADATA_DATE_PTRN = "%Y-%m-%dT%H:%M:%S.%f%z"
 
 # PUBLIC **********************************************************************
 
@@ -33,15 +36,20 @@ def process(videosdirpath):
     print("Step 2 : Prepare")
     for item in items:
         logsource(item)
+        item.output = item.input
+        setoutputcodec(item, OUTPUT_SUFFIX)
+        setoutputctime(item, OUTPUT_DATE_PREFIX, METADATA_DATE_PTRN)
         setthumb(item, THUMB_SUFFIX)
-        if exists(item.thumb) :
-            continue
+
+    print("Step 2 : Thumbs")
+    for item in items:
+        logtarget(item)
+        # if exists(item.thumb) :
+        #     continue
         savethumb(item)
 
     print("Step 3 : Encode")
     for item in items:
-        setoutput(item, OUTPUT_SUFFIX)
-        logtarget(item)
         # if exists(item.output) :
         #     continue
         logvideo(item)
@@ -102,9 +110,29 @@ def is_video(json):
 def codec(json):
     return json['codec_name']
 
-def setoutput(item, suffix):
-    item.output = item.input
+def setoutputcodec(item, suffix):
     item.output = replacesuffix(item.output, suffix)
+
+# TODO: add timezone param to CLI
+def setoutputctime(item, tpl, tpl2):
+    filepath = item.input
+    
+    metadata = FFProbe(item.input)
+    for stream in metadata["streams"]:
+        if is_video(stream):
+            datestr = stream['tags']['creation_time']
+            
+    utc_dt = datetime.strptime(datestr, tpl2)
+    loc_dt = utc_to_local(utc_dt) 
+    ctime = utc_dt.astimezone().strftime(tpl)
+
+    dirname = os.path.dirname(filepath)
+    basename = os.path.basename(filepath)
+
+    item.output = f"{dirname}\{ctime}{basename}"
+
+def utc_to_local(utc_dt):
+    return utc_dt.replace(tzinfo=timezone.utc).astimezone(tz=None)
 
 def replacesuffix(path, suffix):
     ext = pathlib.Path(path).suffix
@@ -112,7 +140,7 @@ def replacesuffix(path, suffix):
     return new
 
 def setthumb(item, suffix):
-    item.thumb = replacesuffix(item.input, suffix)
+    item.thumb = replacesuffix(item.output, suffix)
 
 def savethumb(item):
     input = item.input
