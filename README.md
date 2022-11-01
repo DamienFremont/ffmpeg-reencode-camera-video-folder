@@ -26,7 +26,11 @@ pip install -r requirements.txt --force-reinstall
 ## Usage
 
 ```bash
-python .\ffmpeg-reencode.py --dirpath C:\Users\damien\Desktop\100MEDIA
+python .\ffmpeg-renamectime.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
+
+python .\ffmpeg-reencodex265.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
+
+python .\ffmpeg-clean.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
 ```
 
 ---

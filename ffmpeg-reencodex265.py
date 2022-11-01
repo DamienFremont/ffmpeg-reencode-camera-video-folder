@@ -42,8 +42,6 @@ def process(videosdirpath):
         logsource(item)
         item.output = item.input
         setoutputcodec(item, OUTPUT_SUFFIX)
-        if not hasdatename(item, OUTPUT_DATE_REG): 
-            setoutputctime(item, OUTPUT_DATE_PREFIX, METADATA_DATE_PTRN)
 
     print("Step 3 : Encode")
     for item in items:
@@ -67,10 +65,6 @@ def process(videosdirpath):
     logcsv(items)
 
 # FUNCTIONS *********************************************************************
-
-def hasdatename(item, pattern):
-    basename = os.path.basename(item.input)
-    return re.match(pattern, basename)
 
 def getfiles(path):
     items = []
@@ -110,7 +104,7 @@ def filterbycodec(items, codecs):
 
 # https://github.com/gbstack/ffprobe-python
 def FFProbe(path):
-    cmd = f"ffprobe.exe -show_format -show_streams -loglevel quiet -print_format json {path}"
+    cmd = f"ffprobe.exe -show_format -show_streams -loglevel quiet -print_format json \"{path}\""
     json_data = subprocess.check_output(cmd, shell=True)
     json_object = json.loads(json_data)
     return json_object
@@ -127,30 +121,13 @@ def codec(json):
 def setoutputcodec(item, suffix):
     item.output = replacesuffix(item.output, suffix)
 
-# TODO: add timezone param to CLI
-def setoutputctime(item, tpl, tpl2):
-    metadata = FFProbe(item.input)
-    for stream in metadata["streams"]:
-        if is_video(stream):
-            datestr = stream['tags']['creation_time']
-    utc_dt = datetime.strptime(datestr, tpl2)
-    loc_dt = utc_to_local(utc_dt) 
-    ctime = utc_dt.astimezone().strftime(tpl)
-    filepath = item.output
-    dirname = os.path.dirname(filepath)
-    basename = os.path.basename(filepath)
-    item.output = f"{dirname}\{ctime}{basename}"
-
-def utc_to_local(utc_dt):
-    return utc_dt.replace(tzinfo=timezone.utc).astimezone(tz=None)
-
 def replacesuffix(path, suffix):
     ext = pathlib.Path(path).suffix
     new = path.replace(ext, f"{suffix}")
     return new
 
 def createtemp(item):
-    folderpath = f"{item.output}_temp"
+    folderpath = f"{item.input}_temp"
     item.temp = folderpath
     if exists(folderpath) :
         return
