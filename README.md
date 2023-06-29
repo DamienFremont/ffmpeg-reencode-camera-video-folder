@@ -12,13 +12,16 @@ Example :
 
 ## Getting Started
 
-Install Python, pip, ffmepg
+Install Python 3, pip, ffmepg, mp4box.exe
 
 ```bash
 pip install -r requirements.txt --force-reinstall
 
 # wget https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z
 # unzip
+
+# wget https://gpac.wp.imt.fr/downloads/
+
 ```
 
 ---
