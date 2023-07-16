@@ -6,8 +6,8 @@ import re
 
 # STATIC **********************************************************************
 
-FILTER_EXTS = ['mp4']
-FILTER_CODECS = ['h264']
+FILTER_EXTS = ['mp4', 'avi', 'mpeg4', 'mpeg']
+FILTER_EXCLUDE_CODECS = ['h265']
 OUTPUT_SUFFIX = '-x265.mp4'
 THUMB_SUFFIX = '.jpg'
 THUMB_TS = "00:00:01"
@@ -35,7 +35,7 @@ def process(videosdirpath):
     print("Step 1 : Find")
     items = getfiles(videosdirpath)
     items = filterbyext(items, FILTER_EXTS)
-    items = filterbycodec(items, FILTER_CODECS)
+    items = filterbyexcludecodec(items, FILTER_EXCLUDE_CODECS)
 
     print("Step 2 : Prepare")
     for item in items:
@@ -90,7 +90,7 @@ def filterbyext(items, exts):
     return filtered
 
 # https://github.com/gbstack/ffprobe-python
-def filterbycodec(items, codecs):
+def filterbyexcludecodec(items, not_codecs):
     filtered = []
     for item in items:
         metadata = FFProbe(item.input)
@@ -181,7 +181,7 @@ def logconfig(path):
     print(f"Input")
     print(f"folder: {path}")
     print(f"filter (exts): {FILTER_EXTS}")
-    print(f"filter (codecs): {FILTER_CODECS}")
+    print(f"filter (codecs): {FILTER_EXCLUDE_CODECS}")
     print("")
     print(f"Output")
     print(f"name: *{OUTPUT_SUFFIX}")
