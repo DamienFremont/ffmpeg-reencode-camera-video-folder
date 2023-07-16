@@ -50,9 +50,9 @@ def process(videosdirpath):
         #     continue
         # TODO: temp folder
         createtemp(item)
+        savethumb(item, THUMB_TS)
         savevideo(item)
         saveaudio(item)
-        savethumb(item, THUMB_TS)
 
     print("Step 4 : Mux")
     for item in items:
@@ -97,7 +97,7 @@ def filterbyexcludecodec(items, not_codecs):
         for stream in metadata["streams"]:
             if not is_video(stream):
                 continue
-            if not codec(stream).lower() in codecs:
+            if codec(stream).lower() in not_codecs:
                 continue    
             filtered.append(item)
     return filtered
