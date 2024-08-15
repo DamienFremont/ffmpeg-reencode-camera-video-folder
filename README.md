@@ -1,7 +1,8 @@
-# ffmpeg-reencode
-=================
+# FFmpeg - Reencode Camera Video Folder (H265, Timestamp, Thumbnail)
 
 ![alt text](./docs/readme-thumb.png)
+
+Useful for GoPro or DJI Drone videos. 
 
 Reencode videos folder's content to x265, with thumbnails
 (tested with ffmpeg "Latest Auto-Build (2022-09-13 12:39)")
