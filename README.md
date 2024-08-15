@@ -1,6 +1,8 @@
 # ffmpeg-reencode
 =================
 
+![alt text](./docs/readme-thumb.png)
+
 Reencode videos folder's content to x265, with thumbnails
 (tested with ffmpeg "Latest Auto-Build (2022-09-13 12:39)")
 
@@ -17,12 +19,14 @@ Install Python 3, pip, ffmepg, mp4box.exe
 ```bash
 pip install -r requirements.txt --force-reinstall
 
-# wget https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z
+wget https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z
 # unzip
 
-# wget https://gpac.wp.imt.fr/downloads/
+wget https://gpac.wp.imt.fr/downloads/
 
 ```
+
+![alt text](./docs/readme-install-1.png)
 
 ---
 
@@ -32,9 +36,13 @@ pip install -r requirements.txt --force-reinstall
 python .\ffmpeg-renamectime.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
 
 python .\ffmpeg-reencodex265.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
-
-python .\ffmpeg-clean.py --dirpath "C:\Users\damien\Desktop\100MEDIA"
 ```
+
+![alt text](./docs/readme-usage-1.png)
+
+![alt text](./docs/readme-usage-2.png)
+
+![alt text](./docs/readme-usage-3.png)
 
 ---
 
