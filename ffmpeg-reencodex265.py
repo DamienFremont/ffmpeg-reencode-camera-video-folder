@@ -6,9 +6,9 @@ import re
 
 # STATIC **********************************************************************
 
-FILTER_EXTS = ['mp4', 'avi', 'mpeg4', 'mpeg']
+FILTER_EXTS = ['mp4', 'avi', 'mpeg4', 'mpeg', 'wmv']
 FILTER_EXCLUDE_CODECS = ['h265']
-OUTPUT_SUFFIX = '-x265.mp4'
+OUTPUT_SUFFIX = '.x265.AC3.mp4'
 THUMB_SUFFIX = '.jpg'
 THUMB_TS = "00:00:01"
 OUTPUT_DATE_REG = r'^[0-9]{8}_[0-9]{6}.*'
@@ -51,8 +51,8 @@ def process(videosdirpath):
         # TODO: temp folder
         createtemp(item)
         savethumb(item, THUMB_TS)
-        savevideo(item)
         saveaudio(item)
+        savevideo(item)
 
     print("Step 4 : Mux")
     for item in items:
@@ -158,8 +158,10 @@ def saveaudio(item):
     metadata = FFProbe(item.input)
     for stream in metadata["streams"]:
         if is_audio(stream):
-            filepath = os.path.join(item.temp, "audio.m4a")
-            cmd = f"MP4Box.exe -single 2 -out \"{filepath}\" \"{item.input}\""
+            filepath = os.path.join(item.temp, "audio.ac3")
+            overwrite = '-y'
+            verbose = '-hide_banner -loglevel error'
+            cmd = f"ffmpeg.exe {overwrite} {verbose} -i \"{item.input}\" -c:a ac3 \"{filepath}\""
             out = subprocess.check_output(cmd, shell=True)
             item.audio = filepath
 
